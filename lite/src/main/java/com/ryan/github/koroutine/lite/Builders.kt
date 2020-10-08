@@ -1,6 +1,8 @@
 package com.ryan.github.koroutine.lite
 
+import com.ryan.github.koroutine.lite.dispatcher.Dispatchers
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -17,5 +19,7 @@ fun launch(
 }
 
 fun newCoroutineContext(context: CoroutineContext): CoroutineContext {
-    return context + CoroutineName("coroutine#${coroutineIndex.getAndIncrement()}")
+    val combined = context + CoroutineName("coroutine#${coroutineIndex.getAndIncrement()}")
+    return if (combined !== Dispatchers.Default && combined[ContinuationInterceptor] == null)
+        combined + Dispatchers.Default else combined
 }

@@ -17,12 +17,13 @@ suspend fun main() {
     job.invokeOnCompletion {
         log("onCompleted: $it")
     }
-    log(job.isActive)
+    log("isActive: ${job.isActive}")
     job.join()
+    log("done!")
 }
 
 suspend fun hello() = suspendCoroutine<Int> {
-    thread {
+    thread(isDaemon = true) {
         Thread.sleep(1000)
         it.resume(10086)
     }
