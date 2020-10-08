@@ -34,7 +34,7 @@ abstract class AbstractCoroutine<T>(
         }
         // 通知所有回调当前协程以执行完成
         newState.notifyCompletion(result)
-        // 通知完之后
+        // 通知完之后清空回调
         newState.clear()
     }
 

@@ -1,5 +1,6 @@
 package com.ryan.github.koroutine.lite.sample
 
+import com.ryan.github.koroutine.lite.delay
 import com.ryan.github.koroutine.lite.launch
 import com.ryan.github.koroutine.lite.utils.log
 import kotlin.concurrent.thread
@@ -11,6 +12,7 @@ suspend fun main() {
         log("start")
         val result = hello()
         log(result)
+        delay(2000)
     }
     job.invokeOnCompletion {
         log("onCompleted: $it")

@@ -20,5 +20,6 @@ interface Job : CoroutineContext.Element {
     // 移除回调函数
     fun remove(disposable: Disposable)
 
+    // 类似线程的join函数
     suspend fun join()
 }
