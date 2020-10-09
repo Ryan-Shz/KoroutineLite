@@ -9,7 +9,7 @@ abstract class AbstractCoroutine<T>(
 ) : Job, Continuation<T> {
 
     // 当前协程的状态，可能多线程操作，使用Atomic来保证线程安全
-    private val state = AtomicReference<CoroutineState>()
+    protected val state = AtomicReference<CoroutineState>()
 
     // 协程是否正在运行中
     override val isActive: Boolean

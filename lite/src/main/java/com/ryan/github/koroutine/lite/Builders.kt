@@ -1,5 +1,6 @@
 package com.ryan.github.koroutine.lite
 
+import com.ryan.github.koroutine.lite.dispatcher.DispatcherContext
 import com.ryan.github.koroutine.lite.dispatcher.Dispatchers
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.ContinuationInterceptor
@@ -22,4 +23,11 @@ fun newCoroutineContext(context: CoroutineContext): CoroutineContext {
     val combined = context + CoroutineName("coroutine#${coroutineIndex.getAndIncrement()}")
     return if (combined !== Dispatchers.Default && combined[ContinuationInterceptor] == null)
         combined + Dispatchers.Default else combined
+}
+
+fun <T> runBlocking(context: CoroutineContext = EmptyCoroutineContext, block: suspend () -> T): T {
+    val dispatcher = BlockingQueueDispatcher()
+    val completion = BlockingCoroutine<T>(newCoroutineContext(context + DispatcherContext(dispatcher)), dispatcher)
+    block.startCoroutine(completion)
+    return completion.joinBlocking()
 }
