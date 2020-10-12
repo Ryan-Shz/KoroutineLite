@@ -68,7 +68,7 @@ abstract class AbstractCoroutine<T>(
     }
 
     // 保存外部传进来的block回调到State中，以便于在协程执行结束时可以回调它
-    private fun doOnCompleted(callback: OnCompleteCallback<T>): Disposable {
+    protected fun doOnCompleted(callback: OnCompleteCallback<T>): Disposable {
         // 创建Disposable，保存外部传进来的结束回调：block
         val disposable = CompletionHandlerDisposable(this, callback)
         // 将创建好的Disposable对象保存到State中

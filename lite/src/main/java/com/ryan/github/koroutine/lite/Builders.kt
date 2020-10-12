@@ -27,7 +27,19 @@ fun newCoroutineContext(context: CoroutineContext): CoroutineContext {
 
 fun <T> runBlocking(context: CoroutineContext = EmptyCoroutineContext, block: suspend () -> T): T {
     val dispatcher = BlockingQueueDispatcher()
-    val completion = BlockingCoroutine<T>(newCoroutineContext(context + DispatcherContext(dispatcher)), dispatcher)
+    val completion = BlockingCoroutine<T>(
+        newCoroutineContext(context + DispatcherContext(dispatcher)),
+        dispatcher
+    )
     block.startCoroutine(completion)
     return completion.joinBlocking()
+}
+
+fun <T> async(
+    context: CoroutineContext = EmptyCoroutineContext,
+    block: suspend () -> T
+): Deferred<T> {
+    val completion = DeferredCoroutine<T>(newCoroutineContext(context))
+    block.startCoroutine(completion)
+    return completion
 }
