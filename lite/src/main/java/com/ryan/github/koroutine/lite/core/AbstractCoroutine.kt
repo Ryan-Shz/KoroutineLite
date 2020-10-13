@@ -37,10 +37,24 @@ abstract class AbstractCoroutine<T>(
                 }
             }
         }
+        // 尝试处理异常
+        (newState as CoroutineState.Complete<*>).exception?.let(this::tryHandleException)
         // 通知所有回调当前协程以执行完成
         newState.notifyCompletion(result)
         // 通知完之后清空回调
         newState.clear()
+    }
+
+    private fun tryHandleException(exception: Throwable) {
+        // CancellationException是特殊异常，用来标识协程被取消
+        if (exception is CancellationException) {
+            return
+        }
+        handleJobException(exception)
+    }
+
+    protected open fun handleJobException(exception: Throwable) {
+
     }
 
     override fun invokeOnCompletion(onComplete: OnCompleteBlock): Disposable {
