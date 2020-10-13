@@ -1,4 +1,4 @@
-package com.ryan.github.koroutine.lite
+package com.ryan.github.koroutine.lite.core
 
 import com.ryan.github.koroutine.lite.dispatcher.Dispatcher
 import java.util.concurrent.BlockingDeque

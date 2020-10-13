@@ -1,4 +1,4 @@
-package com.ryan.github.koroutine.lite
+package com.ryan.github.koroutine.lite.core
 
 sealed class CoroutineState {
 
@@ -27,6 +27,13 @@ sealed class CoroutineState {
         }
     }
 
+    // 通知所有的回调，协程被取消了
+    fun notifyCancellation() {
+        disposableList.loopOn<CancellationHandlerDisposable> {
+            it.onCancel()
+        }
+    }
+
     fun clear() {
         this.disposableList = DisposableList.Nil
     }
@@ -38,4 +45,7 @@ sealed class CoroutineState {
     // 不同的状态可能要保存不同的信息，比如：已完成状态，需要保存执行结果或者异常信息
     // 所以我们用类继承的方式来创建不同的状态
     class Complete<T>(val value: T? = null, val exception: Throwable? = null) : CoroutineState()
+
+    // 表示取消状态
+    class Cancelling : CoroutineState()
 }

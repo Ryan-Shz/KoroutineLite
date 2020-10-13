@@ -1,5 +1,6 @@
 package com.ryan.github.koroutine.lite
 
+import com.ryan.github.koroutine.lite.cancel.suspendCancellableCoroutine
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -12,7 +13,7 @@ private val executor = Executors.newScheduledThreadPool(1) { runnable ->
 }
 
 suspend fun delay(time: Long, unit: TimeUnit = TimeUnit.MILLISECONDS) =
-    suspendCoroutine<Unit> { continuation ->
+    suspendCancellableCoroutine<Unit> { continuation ->
         executor.schedule({
             continuation.resume(Unit)
         }, time, unit)

@@ -1,13 +1,19 @@
-package com.ryan.github.koroutine.lite
+package com.ryan.github.koroutine.lite.core
 
 typealias OnCompleteCallback<T> = (Result<T>) -> Unit
 
 interface Disposable {
-
     fun dispose()
 }
 
 class CompletionHandlerDisposable<T>(private val job: Job, val onComplete: OnCompleteCallback<T>) :
+    Disposable {
+    override fun dispose() {
+        job.remove(this)
+    }
+}
+
+class CancellationHandlerDisposable(private val job: Job, val onCancel: OnCancelBlock) :
     Disposable {
     override fun dispose() {
         job.remove(this)

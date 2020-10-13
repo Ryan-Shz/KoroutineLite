@@ -1,8 +1,11 @@
-package com.ryan.github.koroutine.lite
+package com.ryan.github.koroutine.lite.core
 
+import java.util.concurrent.CancellationException
 import kotlin.coroutines.CoroutineContext
 
 typealias OnCompleteBlock = (Result<*>) -> Unit
+typealias CancellationException = CancellationException
+typealias OnCancelBlock = () -> Unit
 
 interface Job : CoroutineContext.Element {
 
@@ -22,4 +25,10 @@ interface Job : CoroutineContext.Element {
 
     // 类似线程的join函数
     suspend fun join()
+
+    // 取消协程执行
+    fun cancel()
+
+    // 添加取消回调
+    fun invokeOnCancel(onCancel: OnCancelBlock): Disposable
 }

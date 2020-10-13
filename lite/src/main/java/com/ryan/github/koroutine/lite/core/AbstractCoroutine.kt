@@ -1,15 +1,17 @@
-package com.ryan.github.koroutine.lite
+package com.ryan.github.koroutine.lite.core
 
 import java.lang.IllegalStateException
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.*
 
 abstract class AbstractCoroutine<T>(
-    override val context: CoroutineContext
+    context: CoroutineContext
 ) : Job, Continuation<T> {
 
     // 当前协程的状态，可能多线程操作，使用Atomic来保证线程安全
     protected val state = AtomicReference<CoroutineState>()
+
+    override val context = context + this
 
     // 协程是否正在运行中
     override val isActive: Boolean
@@ -20,10 +22,13 @@ abstract class AbstractCoroutine<T>(
         state.set(CoroutineState.InComplete())
     }
 
+    // resumeWith调用时，表示协程已经执行完成
     override fun resumeWith(result: Result<T>) {
         // 更新当前状态为已完成的CoroutineState.Complete
         val newState = state.updateAndGet { prev ->
             when (prev) {
+                // 如果是Cancelling状态，表示之前调用过cancel，但协程也要有正常的状态流转到结束(返回结果或者异常)
+                is CoroutineState.Cancelling,
                 is CoroutineState.InComplete -> {
                     CoroutineState.Complete(result.getOrNull(), result.exceptionOrNull()).from(prev)
                 }
@@ -45,9 +50,10 @@ abstract class AbstractCoroutine<T>(
     override fun remove(disposable: Disposable) {
         state.updateAndGet { prev ->
             when (prev) {
-                is CoroutineState.InComplete -> {
-                    CoroutineState.InComplete().from(prev).without(disposable)
-                }
+                is CoroutineState.InComplete -> CoroutineState.InComplete().from(prev)
+                    .without(disposable)
+                is CoroutineState.Cancelling -> CoroutineState.Cancelling().from(prev)
+                    .without(disposable)
                 is CoroutineState.Complete<*> -> prev
             }
         }
@@ -55,6 +61,7 @@ abstract class AbstractCoroutine<T>(
 
     override suspend fun join() {
         when (state.get()) {
+            is CoroutineState.Cancelling,
             is CoroutineState.InComplete -> return joinSuspend()
             is CoroutineState.Complete<*> -> return
         }
@@ -74,9 +81,10 @@ abstract class AbstractCoroutine<T>(
         // 将创建好的Disposable对象保存到State中
         val newState = state.updateAndGet { prev ->
             when (prev) {
-                is CoroutineState.InComplete -> {
-                    CoroutineState.InComplete().from(prev).with(disposable)
-                }
+                is CoroutineState.InComplete -> CoroutineState.InComplete().from(prev)
+                    .with(disposable)
+                is CoroutineState.Cancelling -> CoroutineState.Cancelling().from(prev)
+                    .with(disposable)
                 is CoroutineState.Complete<*> -> prev
             }
         }
@@ -85,5 +93,43 @@ abstract class AbstractCoroutine<T>(
             callback(if (it.value != null) Result.success(it.value) else Result.failure(it.exception!!))
         }
         return disposable
+    }
+
+    // 保存外部传进来的block回调到State中，以便于在协程取消时回调它
+    override fun invokeOnCancel(onCancel: OnCancelBlock): Disposable {
+        val disposable = CancellationHandlerDisposable(this, onCancel)
+        val newState = state.updateAndGet { prev ->
+            when (prev) {
+                // 协程还在执行中，将disposable保存到state中
+                is CoroutineState.InComplete -> CoroutineState.InComplete().from(prev)
+                    .with(disposable)
+                // 协程已经取消了或者已经完成，返回之前的状态就行了
+                is CoroutineState.Cancelling,
+                is CoroutineState.Complete<*> -> prev
+            }
+        }
+        // 如果协程已经是取消状态，则直接调用这个回调
+        if (newState is CoroutineState.Cancelling) {
+            onCancel()
+        }
+        return disposable
+    }
+
+    // 取消协程
+    // 1. 如果协程正在执行中，则将当前的状态修改为Cancelling
+    // 2. 修改为Cancelling之后，回调所有之前通过invokeOnCancel传进来的回调
+    override fun cancel() {
+        // 如果协程正在执行中，则将当前的状态修改为Cancelling
+        val newState = state.updateAndGet { prev ->
+            when (prev) {
+                is CoroutineState.InComplete -> CoroutineState.Cancelling().from(prev)
+                is CoroutineState.Complete<*>,
+                is CoroutineState.Cancelling -> prev
+            }
+        }
+        // 回调所有之前通过invokeOnCancel传进来的回调
+        if (newState is CoroutineState.Cancelling) {
+            newState.notifyCancellation()
+        }
     }
 }
