@@ -1,12 +1,13 @@
 package com.ryan.github.koroutine.lite.core
 
+import com.ryan.github.koroutine.lite.scope.CoroutineScope
 import java.lang.IllegalStateException
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.*
 
 abstract class AbstractCoroutine<T>(
     context: CoroutineContext
-) : Job, Continuation<T> {
+) : Job, Continuation<T>, CoroutineScope {
 
     // 当前协程的状态，可能多线程操作，使用Atomic来保证线程安全
     protected val state = AtomicReference<CoroutineState>()
@@ -17,9 +18,17 @@ abstract class AbstractCoroutine<T>(
     override val isActive: Boolean
         get() = state.get() is CoroutineState.InComplete
 
+    override val scopeContext: CoroutineContext
+        get() = context
+
+    protected val parentJob = context[Job]
+
+    private var parentCancelDisposable: Disposable? = null
+
     init {
         // 初始化协程状态为正在执行中
         state.set(CoroutineState.InComplete())
+        parentCancelDisposable = parentJob?.invokeOnCancel { cancel() }
     }
 
     // resumeWith调用时，表示协程已经执行完成
@@ -43,18 +52,28 @@ abstract class AbstractCoroutine<T>(
         newState.notifyCompletion(result)
         // 通知完之后清空回调
         newState.clear()
+
+        parentCancelDisposable?.dispose()
     }
 
-    private fun tryHandleException(exception: Throwable) {
+    private fun tryHandleException(exception: Throwable): Boolean {
         // CancellationException是特殊异常，用来标识协程被取消
         if (exception is CancellationException) {
-            return
+            return false
         }
-        handleJobException(exception)
+        return (parentJob as? AbstractCoroutine<*>)
+            ?.handleChildException(exception)
+            ?.takeIf { it }
+            ?: handleJobException(exception)
     }
 
-    protected open fun handleJobException(exception: Throwable) {
+    protected open fun handleJobException(exception: Throwable): Boolean {
+        return false
+    }
 
+    protected open fun handleChildException(e: Throwable): Boolean {
+        cancel()
+        return tryHandleException(e)
     }
 
     override fun invokeOnCompletion(onComplete: OnCompleteBlock): Disposable {
@@ -77,7 +96,13 @@ abstract class AbstractCoroutine<T>(
         when (state.get()) {
             is CoroutineState.Cancelling,
             is CoroutineState.InComplete -> return joinSuspend()
-            is CoroutineState.Complete<*> -> return
+            is CoroutineState.Complete<*> -> {
+                val currentCallingJobState = coroutineContext[Job]?.isActive ?: return
+                if (!currentCallingJobState) {
+                    throw CancellationException("Coroutine is cancelled.")
+                }
+                return
+            }
         }
     }
 
@@ -145,5 +170,7 @@ abstract class AbstractCoroutine<T>(
         if (newState is CoroutineState.Cancelling) {
             newState.notifyCancellation()
         }
+
+        parentCancelDisposable?.dispose()
     }
 }

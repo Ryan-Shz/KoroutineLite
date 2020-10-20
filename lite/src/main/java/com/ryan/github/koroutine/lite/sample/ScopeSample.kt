@@ -2,15 +2,12 @@ package com.ryan.github.koroutine.lite.sample
 
 import com.ryan.github.koroutine.lite.CoroutineName
 import com.ryan.github.koroutine.lite.delay
-import com.ryan.github.koroutine.lite.exception.CoroutineExceptionHandler
 import com.ryan.github.koroutine.lite.exception.coroutineExceptionHandler
 import com.ryan.github.koroutine.lite.launch
 import com.ryan.github.koroutine.lite.scope.GlobalScope
+import com.ryan.github.koroutine.lite.scope.coroutineScope
 import com.ryan.github.koroutine.lite.utils.log
 import java.lang.ArithmeticException
-import kotlin.concurrent.thread
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 suspend fun main() {
     val handler = coroutineExceptionHandler { context, exception ->
@@ -19,9 +16,17 @@ suspend fun main() {
     val job = GlobalScope.launch(handler) {
         log("start")
         delay(2000)
+        log("currentScope1: $this")
+        getCurrentScope()
         throw ArithmeticException("div 0")
     }
     log("isActive: ${job.isActive}")
     job.join()
     log("done!")
+}
+
+private suspend fun getCurrentScope() {
+    coroutineScope {
+        log("currentScope2: $this")
+    }
 }

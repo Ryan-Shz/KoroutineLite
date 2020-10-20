@@ -2,13 +2,14 @@ package com.ryan.github.koroutine.lite.sample
 
 import com.ryan.github.koroutine.lite.delay
 import com.ryan.github.koroutine.lite.launch
+import com.ryan.github.koroutine.lite.scope.GlobalScope
 import com.ryan.github.koroutine.lite.utils.log
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
 suspend fun main() {
-    val job = launch {
+    val job = GlobalScope.launch {
         log("start")
         val result = hello()
         log(result)
